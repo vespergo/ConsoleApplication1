@@ -7,18 +7,18 @@ using namespace std;
 int readFile(char *text)
 {
 
-    char fileName[256];
-    cout << "Please enter the filename of the MadLib: ";
-    cin >> fileName;
-    cin.ignore();
+    //char fileName[256];
+    //cout << "Please enter the filename of the MadLib: ";
+    //cin >> fileName;
+    //cin.ignore();
 
     //Declare a stream variable. Since this is an input stream us 'ifstream'.
-    ifstream fin(fileName);
-    if (fin.fail())                //Check for errors
-    {
-        cout << "Error reading file " << fileName << endl; //Error message
-        return -1;
-    }
+    ifstream fin("madlib.txt");
+    //if (fin.fail())                //Check for errors
+    //{
+    //    cout << "Error reading file " << fileName << endl; //Error message
+    //    return -1;
+    //}
 
     //Loop through the file char by char, evaluating for limits
     int charTotal = 0;
@@ -65,6 +65,7 @@ int readFile(char *text)
 
 void askQuestions(int charTotal, char *text) {
             
+    char story[1024] = { 0 };
     char answers[50][50] = { 0 };
     int numAnswers = 0;
 
@@ -72,7 +73,7 @@ void askQuestions(int charTotal, char *text) {
     for (int i=0; i < charTotal; i++)
     {
         char c = text[i];
-        
+
         // start capturing the token
         if (c == ':') {
             
@@ -93,7 +94,8 @@ void askQuestions(int charTotal, char *text) {
 
                 question[qIndex] = c;
                 qIndex++;
-                c = text[i + qIndex];
+                i++;
+                c = text[i];
             }
 
             // did we capture a question to ask?
@@ -102,9 +104,32 @@ void askQuestions(int charTotal, char *text) {
                 question[0] = toupper(question[0]);
 
                 cout << "\t" << question << ": ";
-                cin.getline(answers[numAnswers], 50);
+                char answer[100];
+                cin >> answer;
                 numAnswers++;
+
+                //insert back into story
+                strncat(story, answer, strlen(answer));
             }
+            else {
+                //translate special character and insert into story
+                char special = c;
+                if (special == '!')
+                    story[i - 2] = '\n';
+                else if (special == '<')
+                    story[i - 1] = '"';
+                else if(special == '>')
+                    story[i - 1] = '"';
+                else if (special == '.')
+                    story[i - 1] = '.';
+                else if (special == ',')
+                    story[i - 1] = ',';
+                    
+            }
+        }
+        else {
+            //normal character
+            story[i] = c;
         }
 
     }
