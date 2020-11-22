@@ -4,11 +4,11 @@ using namespace std;
 
 
 // read in the file and make sure we check that file is the right size
-int readFile(char* text)
+int readFile(char originalText[][50], char questions[][50])
 {
 
 	char fileName[256];
-	cout << "Please enter the filename of the MadLib: ";
+	cout << "Please enter the filename of the Mad Lib: ";
 	cin >> fileName;
 	cin.ignore();
 
@@ -25,35 +25,32 @@ int readFile(char* text)
 	int totalLines = 0;
 	int lineLength = 0;
 	int totalWords = 0;
-	int wordLength = 0;
+
+	int questionCursor = 0;
 
 	while (!fin.eof()) {
 
-		char c;
+		//store each word into an array
+		char word[100];
+		fin >> word;
+		strcpy_s(originalText[totalWords], word);
 
-		//get a single character from the file
-		fin.get(c);
+			
 
-		//store a single char
-		text[charTotal] = c;
-
-		charTotal++;
-		lineLength++;
-		wordLength++;
-
-		if (c == '\n') {
-			totalLines++;
-			lineLength = 0;
+		// store our questions
+		if (word[0] == ':' && word[1] >= 65) {		
+			//store the question, starting with the first character after the :
+			strcpy_s(questions[questionCursor], word+1);
+			questionCursor++;
 		}
-		else if (c == ' ') {
-			totalWords++;
-			wordLength = 0;
-		}
+
+		charTotal += strlen(word);
+		totalWords++;
 
 		//check to see if anything went out of bounds.    
 		if (charTotal > 1024 || totalLines > 32 ||
 			lineLength > 80 || totalWords > 256 ||
-			wordLength > 32)
+			strlen(word) > 32)
 			return -1;
 
 	}
@@ -62,107 +59,73 @@ int readFile(char* text)
 
 }
 
-void askQuestions(int charTotal, char* text, char answers[][50]) {
+void askQuestions(char questions[][50], char answers[][50]) 
+{
+	int currentQuestion = 0;
+	while (questions[currentQuestion][0]) {
+		char* question = questions[currentQuestion];
+		question[0] = toupper(questions[currentQuestion][0]);
 
-	int numAnswers = 0;
+		//replace _ with space
+		for (int i = 0; i < strlen(question); i++) {
+			if (question[i] == '_')
+				question[i] = ' ';
+		}
 
-	// we're only concerned with getting answers for this loop
-	for (int i = 0; i < charTotal; i++)
-	{
-		char c = text[i];
+		cout << "\t" << question << ": ";
+		cin >> answers[currentQuestion];
 
-		// start capturing the token
-		if (c == ':') {
-
-			//advance cursor to get next character
-			i++;
-			c = text[i];
-
-			char question[50] = { 0 };
-			int qIndex = 0;
-
-			// knowing that our special token chars are < 65 we can take advantage to know when to end our question
-
-			while (c >= 65) {
-
-				//replace _ with space
-				if (c == '_')
-					c = ' ';
-
-				question[qIndex] = c;
-				qIndex++;
-				c = text[i + qIndex];
-			}
-
-			// did we capture a question to ask?
-			if (question[0] != 0) {
-				//capitalize first char
-				question[0] = toupper(question[0]);
-
-                cout << "\t" << question << ": ";
-                cin.getline(answers[numAnswers], 50);
-                numAnswers++;
-            }
-        }
-
+		currentQuestion++;
 	}
 }
 
-void display(int charTotal, char* text, char answers[][50]) {
-		
+
+void display(char originalText[][50], char answers[][50]) {
+	
 	int currentAnswer = 0;
-	int fsCounter = 0;
-	char finalStory[1024];
+	char previousChar = '\n';
 
+	for (int i = 0; originalText[i][0] != '\0'; i++) {
+		
+		if (i > 0) {
+			//we're only concerned with tokens at the moment so we look at the second char
+			char previousChar = originalText[i - 1][1];
+			char currentChar = originalText[i][1];
+			if (previousChar != '!' && previousChar != '<' &&
+				currentChar != '>' && currentChar != '.' && currentChar != ',')
+			{
+				cout << ' ';
+			}
+		}
+		
+		//token
+		if (originalText[i][0] == ':') {
+			char token = originalText[i][1];
 
-	for (int i = 0; i < charTotal; i++)
-	{
-		char c = text[i];
-
-		// this is a token
-		if (c == ':') {
-
-			//get next char
-			char nextChar = text[i+1];
-			
-			if (nextChar == '!') {
-				finalStory[fsCounter-1] = '\n';
-			}
-			else if (nextChar == '<') {
-				finalStory[fsCounter] = '"';
-			}
-			else if (nextChar == '>') {
-				finalStory[fsCounter-1] = '"';
-			}
-			else if (nextChar == '.') {
-				finalStory[fsCounter-1] = '.';				
-			}
-			else if (nextChar == ',') {
-				finalStory[fsCounter-1] = ',';
-			}				
-			else {;
-				for (int x = 0; answers[currentAnswer][x]; x++) {
-					finalStory[fsCounter] = answers[currentAnswer][x];
-					fsCounter++;
-				}
+			if (token == '!')
+				cout << '\n';
+			else if (token == '<')
+				cout << '"';
+			else if (token == '>')
+				cout << '"';
+			else if (token == '.')
+				cout << '.';
+			else if (token == ',')
+				cout << ',';
+			else
+			{
+				cout << answers[currentAnswer];
 				currentAnswer++;
 			}
 
-			//fast forward cursor until i is at the next blank space
-			while (nextChar != ' ') {
-				i++;
-				nextChar = text[i + 1];
-			}
 		}
-		else if(c != '\n'){
-			finalStory[fsCounter] = c;
-			fsCounter++;
-		}
+		else {
 
+			//normal word print
+			cout << originalText[i];
+		}
 	}
 
-	//print out finalStory
-	cout << finalStory;
 }
 
 /*********************************************************
@@ -170,19 +133,31 @@ void display(int charTotal, char* text, char answers[][50]) {
 **********************************************************/
 int main()
 {
-	char originalText[1024];
-	char answers[50][50] = { 0 };
+	bool playing = true;
+	while (playing) {
+		char originalText[500][50] = { '\0' };
+		char answers[50][50];
+		char questions[50][50] = { '\0' };
 
-	//check if file failed, wrong size, etc
-	int charTotal = readFile(originalText);
-	if (charTotal >= 0) {
-		askQuestions(charTotal, originalText, answers);
+		//check if file failed, wrong size, etc
+		int charTotal = readFile(originalText, questions);
+		if (charTotal >= 0) {
+			askQuestions(questions, answers);
 
-		//display story
-		display(charTotal, originalText, answers);
-	}
-	else {
-		cout << "Failed to read file." << endl;
+			// merge and display story
+			display(originalText, answers);
+		}
+		else {
+			cout << "Failed to read file." << endl;
+		}
+
+		char answer;
+		cout << "\nDo you want to play again (y/n)? ";
+		cin >> answer;
+		if (answer == 'n') {
+			playing = false;
+			cout << "Thank you for playing.";
+		}
 	}
 
 	return 0;
